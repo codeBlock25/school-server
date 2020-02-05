@@ -3,11 +3,8 @@ const routes = express.Router()
 const staffSchema = require("../model/staff")
 const bcryptjs = require("bcryptjs")
 const salt = bcryptjs.genSaltSync(10)
-const mailgun = require("mailgun-js")
 const jwt = require("jsonwebtoken")
-const secret = process.env.SECRET || "vRT3d`oGWXMe2!ueBh.?YQM:E:A%Fhrnmd61g(p*?8$u[sOZl!+g+EFIwy29`eh"
-const DOMAIN = 'sandbox59170e274efc4fb58c4a287d32ca550b.mailgun.org'
-const mg = mailgun({apiKey: "e220f4adbfc091099a13f83ccd4c3041-713d4f73-1c10fabd", domain: DOMAIN})
+const nodemailer = require("nodemailer")
 const crypto = require("crypto");
 const studentSchema = require("../model/student")
 
@@ -47,19 +44,29 @@ routes.post("/add",async (req,res)=>{
     }
     console.log(verifiedAdmin)
       if(verifiedAdmin || foundOneAdmin.length === 0) { 
-        let mgdata = {
-            from: 'Excited User <me@samples.mailgun.org>',
-            to: email,
-            subject: 'Hello',
-            text: `Your password is ${password}`
-        };
-        mg.messages().send(mgdata, function (error, body) {
-            if (error) {
-                console.log(error)
-            } else {
-                console.log(body);
-            }
-        });
+        let transporter = nodemailer.createTransport({
+    host: "smtp.zoho.com",
+    port: 465,
+    secure: true, // true for 465, false for other ports
+    auth: {
+      user: process.env.MAILACC, // generated ethereal user
+      pass: process.env.MAILPASSCODE // generated ethereal password
+    }
+  });
+    await transporter.sendMail({
+        from: 'server <server@basiccompanybooks.com>', // sender address
+        to: `${email}`, // list of receivers
+        subject: "password - noreply@basiccompanybooks-server", // Subject line
+        text: `
+        `, // plain text body
+        html: `<p>your password ${password}</p>`
+    // html body 
+      }).then((info)=>{
+        console.log("message sent")
+      })
+      .catch((err)=>{
+          console.log(`Error: ${err}`)
+      })
         await newUser.save()
         .then(()=>{
             res.status(200).json({msg: "user registered"})
@@ -92,12 +99,6 @@ routes.post("/student", async (req,res)=>{
         last_name: last_name,
         class: classS
     })
-    let msgdata = {
-        from: 'Excited User <me@samples.mailgun.org>',
-        to: email,
-        subject: 'Hello',
-        text: `Your password is ${password}`
-    };
     var person = ""
     jwt.verify(token, secret,(err, decode)=>{
         if (err) {
@@ -118,13 +119,30 @@ routes.post("/student", async (req,res)=>{
             .catch(err=>{
                 res.status(400).json({msg: "user not save", error: err})
             })
-        }
-        await mg.messages().send(msgdata, function (error, body) {
-            if (error) {
-                console.log(error)
-            } else {
-                console.log(body);
-            }
+        }  
+        let transporterr = nodemailer.createTransport({
+    host: "smtp.zoho.com",
+    port: 465,
+    secure: true, // true for 465, false for other ports
+    auth: {
+      user: process.env.MAILACC, // generated ethereal user
+      pass: process.env.MAILPASSCODE // generated ethereal password
+    }
+  });
+    await transporterr.sendMail({
+        from: 'server <server@basiccompanybooks.com>', // sender address
+        to: `${email}`, // list of receivers
+        subject: "password - noreply@basiccompanybooks-server", // Subject line
+        text: `
+        `, // plain text body
+        html: `<p>your password ${password}</p>`
+    // html body 
+      }).then((info)=>{
+        console.log("message sent")
+      })
+      .catch((err)=>{
+          console.log(`Error: ${err}`)
+      })
         });
     } else {
         res.status(400).json({msg: "not allowed!"})
