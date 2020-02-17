@@ -14,7 +14,8 @@ route.post("/set", async (req,res)=>{
         question_type,
         questions,
         classFor,
-        token
+        token,
+        date
     } = req.body
     let students = await studentSchema.find({class: classFor})
     var info = []
@@ -30,7 +31,8 @@ route.post("/set", async (req,res)=>{
             teacher_name: info.data.full_name,
             question_type: question_type,
             questions: questions,
-            class: classFor
+            class: classFor,
+            setDate: date
         })
         newQuestion.save()
         .then( async ()=>{
@@ -61,33 +63,37 @@ route.post("/set", async (req,res)=>{
 route.get("/", async (req,res)=>{
     let {
         token,
-        questiontype,
+        questiontype
     } = req.query
-    let classIn = ""
-    let date = Date()
+    let date = new Date()
+    let requestEmail = ""
+    if(!token){
+        res.status(404).json({msg: "invalid token"})
+    }else { 
     jwt.verify(token, secret,(err, decode)=>{
         if (err) {
             console.log(err)
-        } else if (decode.data) {
-           classIn = decode.data.class
+        } else if (decode.data ){
+            requestEmail = decode.data.email
         } else {
             res.status(400)
         }
     }) 
-    // console.log(classIn,questiontype, date)
-    if (classIn === "" || classIn === undefined || classIn === null) {
-        await questionSchema.findOne({class: classIn, question_type: questiontype}).then(question=>{
-            res.json({question: question,msg: "your questions"})
-            console.log()
-        }).catch(err=>{
-            res.status(400).json({msg: "user not allowed", error: err})
-        })
+    let found = await studentSchema.findOne({email: requestEmail})
+    if (found) {
+        console.log(found.class,questiontype, date)
+        let questions = await questionSchema.findOne({class: found.class,question_type: questiontype})
+        res.json(questions)
+    } else {
+        res.status(400).json({msg: "bad request"})
+        }
     }
-    // if (token === "" || token===null || token === undefined) {
-    //     res.status(400).json({msg: "invalid student"})
-    // } else {
-    //     res.json({question: question})
-    // }
+    
 })
 
-module.exports = route
+route.put("/", async (res,req)=>{
+    
+})
+
+
+module.exports = route  

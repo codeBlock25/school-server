@@ -3,23 +3,33 @@ const routes = express.Router()
 const staffSchema = require("../model/staff")
 const bcryptjs = require("bcryptjs")
 const salt = bcryptjs.genSaltSync(10)
+const nodemailer = require('nodemailer')
 const jwt = require("jsonwebtoken")
-const nodemailer = require("nodemailer")
+const secret = process.env.SECRET || "vRT3d`oGWXMe2!ueBh.?YQM:E:A%Fhrnmd61g(p*?8$u[sOZl!+g+EFIwy29`eh"
 const crypto = require("crypto");
 const studentSchema = require("../model/student")
 
+let transporter = nodemailer.createTransport({
+    host: "smtp.zoho.com",
+    port: 465,
+    secure: true, // true for 465, false for other ports
+    auth: {
+      user: "server@basiccompanybooks.com", // generated ethereal user
+      pass: "a20b30c40!@" // generated ethereal password
+    }
+  });
 
 routes.post("/add",async (req,res)=>{
     let {
         first_name,
         last_name,
         email,
-        token 
+        token
     } = req.body
-    let password = crypto.randomBytes(6).toString('hex')
+    let password = crypto.randomBytes(4).toString('hex')
     let hashedPassword = bcryptjs.hashSync(password, salt)
     let foundOneAdmin = await  staffSchema.find()
-    console.log("password",password, first_name, last_name, email) 
+    console.log("password",password) 
     let newUser = foundOneAdmin.length >= 1 ?
     new staffSchema({
         first_name: first_name,
@@ -42,34 +52,23 @@ routes.post("/add",async (req,res)=>{
             }
         })
     }
-    console.log(verifiedAdmin)
       if(verifiedAdmin || foundOneAdmin.length === 0) { 
-        let transporter = nodemailer.createTransport({
-    host: "smtp.zoho.com",
-    port: 465,
-    secure: true, // true for 465, false for other ports
-    auth: {
-      user: process.env.MAILACC, // generated ethereal user
-      pass: process.env.MAILPASSCODE // generated ethereal password
-    }
-  });
-    await transporter.sendMail({
-        from: 'server <server@basiccompanybooks.com>', // sender address
-        to: `${email}`, // list of receivers
-        subject: "password - noreply@basiccompanybooks-server", // Subject line
-        text: `
-        `, // plain text body
-        html: `<p>your password ${password}</p>`
-    // html body 
-      }).then((info)=>{
-        console.log("message sent")
-      })
-      .catch((err)=>{
-          console.log(`Error: ${err}`)
-      })
         await newUser.save()
-        .then(()=>{
+        .then( async ()=>{
             res.status(200).json({msg: "user registered"})
+            await transporter.sendMail({
+                from: 'server <server@basiccompanybooks.com>', // sender address
+                to: email, // list of receivers
+                subject: "details - noreply@server", // Subject line
+                text: `Your password is ${password}`, // plain text body
+                html: `<h2>Your password is ${password}</h2>`
+            // html body 
+              }).then((info)=>{
+                console.log("message sent")
+              })
+              .catch((err)=>{
+                  console.log(`Error: ${err}`)
+              })
         })
         .catch(err=>{
             res.status(400).json({msg: "user registeration not successful", error: err})
@@ -89,9 +88,9 @@ routes.post("/student", async (req,res)=>{
         classS,
         token
     } = req.body
-    console.log(token)
-    let password = crypto.randomBytes(10).toString('hex')
+    let password = crypto.randomBytes(4).toString('hex')
     let hashedPassword = bcryptjs.hashSync(password, 10)
+    let foundOldStaff = await staffSchema.findOne({email: email})
     let newStudent  = new studentSchema({
         email: email,
         password: hashedPassword,
@@ -99,6 +98,7 @@ routes.post("/student", async (req,res)=>{
         last_name: last_name,
         class: classS
     })
+    console.log("password", password)
     var person = ""
     jwt.verify(token, secret,(err, decode)=>{
         if (err) {
@@ -109,44 +109,34 @@ routes.post("/student", async (req,res)=>{
             res.status(400)
         }
     }) 
-    if (token !== null || token !== undefined) {
-        if (person === "admin" || person === "staff") {
-          await newStudent.save()
-            .then(()=>{
-                console.log("user save", password)
-                res.json({msg: "new student added"})
-            })
-            .catch(err=>{
-                res.status(400).json({msg: "user not save", error: err})
-            })
-        }  
-        let transporterr = nodemailer.createTransport({
-    host: "smtp.zoho.com",
-    port: 465,
-    secure: true, // true for 465, false for other ports
-    auth: {
-      user: process.env.MAILACC, // generated ethereal user
-      pass: process.env.MAILPASSCODE // generated ethereal password
-    }
-  });
-    await transporterr.sendMail({
-        from: 'server <server@basiccompanybooks.com>', // sender address
-        to: `${email}`, // list of receivers
-        subject: "password - noreply@basiccompanybooks-server", // Subject line
-        text: `
-        `, // plain text body
-        html: `<p>your password ${password}</p>`
-    // html body 
-      }).then((info)=>{
-        console.log("message sent")
-      })
-      .catch((err)=>{
-          console.log(`Error: ${err}`)
-      })
-        });
+    if ((person === "admin" || person === "staff") && !Boolean(foundOldStaff)) {
+      await newStudent.save()
+        .then( async ()=>{
+            res.json({msg: "new student added"})
+            await transporter.sendMail({
+                from: 'server <server@basiccompanybooks.com>', // sender address
+                to: email, // list of receivers
+                subject: "details - noreply@server", // Subject line
+                text: `Your password is ${password}`, // plain text body
+                html: `<h2>Your password is ${password}</h2>`
+            // html body 
+              }).then((info)=>{
+                console.log("message sent")
+              })
+              .catch((err)=>{
+                  console.log(`Error: ${err}`)
+              })
+        })
+        .catch(err=>{
+            res.status(400).json({msg: "student not save", error: err})
+        })
     } else {
-        res.status(400).json({msg: "not allowed!"})
+        res.status(404).json({msg: "already registered as a staff"})
     }
 })
+
+
+
+
 
 module.exports = routes

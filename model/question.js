@@ -21,6 +21,10 @@ const questionSchema = new schema({
     creationDate: {
         type: Date,
         default: Date.now()
+    },
+    setDate: {
+        required: true,
+        type: String
     }
 })
 

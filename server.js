@@ -5,7 +5,7 @@ const mongoose = require("mongoose")
 const port = process.env.PORT || 1100
 const server = express()
 const customRoute = require("./router")
-const databaseURL = process.env.DATABASE || `mongodb://localhost:27017/db`
+const databaseURL = process.env.DATABASE_URL || "mongodb://localhost:27017/school_db"
 
 server.use(bodyParser.json())
 server.use(bodyParser.urlencoded({extended: false}))
